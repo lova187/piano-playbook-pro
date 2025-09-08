@@ -91,95 +91,75 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
   };
 
   const playPart = async () => {
-    if (!synthRef.current || !currentPart) return;
-    
-    await Tone.start();
-    
-    if (isPlaying) {
-      Tone.Transport.stop();
-      sequenceRef.current?.dispose();
-      setIsPlaying(false);
-      setPlaybackPosition(0);
-      setActiveKeys(new Set());
+    console.log('Play part button clicked');
+    if (!synthRef.current || !currentPart) {
+      console.log('Missing synth or part:', { synth: !!synthRef.current, part: !!currentPart });
       return;
     }
-
-    const { notes, timing } = currentPart;
-    setIsPlaying(true);
-
-    // Create realistic timing based on the actual timing array
-    const events: { note: string | string[], time: number }[] = [];
-    notes.forEach((note, index) => {
-      events.push({
-        note,
-        time: timing[index] || index * 0.5
-      });
-    });
-
-    // Sort events by time
-    events.sort((a, b) => a.time - b.time);
-
-    let eventIndex = 0;
-    const startTime = Tone.now();
-
-    const scheduleNextEvent = () => {
-      if (eventIndex >= events.length || !isPlaying) {
+    
+    try {
+      console.log('Starting Tone...');
+      await Tone.start();
+      console.log('Tone started successfully');
+      
+      if (isPlaying) {
+        console.log('Stopping playback...');
         setIsPlaying(false);
         setPlaybackPosition(0);
         setActiveKeys(new Set());
         return;
       }
 
-      const event = events[eventIndex];
-      const scheduleTime = startTime + event.time;
-      
-      // Schedule note playback
-      if (Array.isArray(event.note)) {
-        // Chord
-        event.note.forEach(n => {
-          const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
-          synthRef.current?.triggerAttackRelease(n, "2n", scheduleTime, velocity);
-        });
-        
-        // Highlight chord keys
-        Tone.Draw.schedule(() => {
-          setActiveKeys(new Set(event.note as string[]));
-          setPlaybackPosition(eventIndex);
-          setTimeout(() => setActiveKeys(new Set()), 800);
-        }, scheduleTime);
-      } else {
-        // Single note
-        const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
-        synthRef.current?.triggerAttackRelease(event.note, "2n", scheduleTime, velocity);
-        
-        // Highlight key
-        Tone.Draw.schedule(() => {
-          setActiveKeys(new Set([event.note as string]));
-          setPlaybackPosition(eventIndex);
-          setTimeout(() => setActiveKeys(new Set()), 800);
-        }, scheduleTime);
-      }
+      const { notes, timing } = currentPart;
+      setIsPlaying(true);
+      console.log('Playing part:', currentPart.name, 'Notes:', notes, 'Timing:', timing);
 
-      eventIndex++;
-      
-      // Schedule next event
-      const nextDelay = eventIndex < events.length ? 
-        (events[eventIndex].time - event.time) * 1000 : 1000;
-      
-      setTimeout(scheduleNextEvent, Math.max(100, nextDelay));
-    };
+      // Simple immediate playback to test
+      notes.forEach((note, index) => {
+        setTimeout(() => {
+          if (!isPlaying) return;
+          
+          console.log(`Playing note ${index}:`, note);
+          
+          if (Array.isArray(note)) {
+            // Play chord
+            note.forEach(n => {
+              if (synthRef.current) {
+                synthRef.current.triggerAttackRelease(n, "1n");
+                console.log('Triggered chord note:', n);
+              }
+            });
+            setActiveKeys(new Set(note));
+          } else {
+            // Play single note
+            if (synthRef.current) {
+              synthRef.current.triggerAttackRelease(note, "1n");
+              console.log('Triggered single note:', note);
+            }
+            setActiveKeys(new Set([note]));
+          }
 
-    scheduleNextEvent();
+          setPlaybackPosition(index);
+          
+          // Clear highlight after note
+          setTimeout(() => setActiveKeys(new Set()), 600);
+        }, index * 1000); // 1 second between notes for testing
+      });
 
-    // Auto-stop after estimated duration
-    const totalDuration = events.length > 0 ? events[events.length - 1].time + 2 : 5;
-    setTimeout(() => {
-      if (isPlaying) {
+      // Stop after all notes
+      setTimeout(() => {
+        console.log('Auto-stopping playback');
         setIsPlaying(false);
         setPlaybackPosition(0);
         setActiveKeys(new Set());
-      }
-    }, totalDuration * 1000);
+      }, notes.length * 1000 + 1000);
+
+    } catch (error) {
+      console.error('Playback error:', error);
+      setIsPlaying(false);
+      setPlaybackPosition(0);
+      setActiveKeys(new Set());
+    }
   };
 
   const resetPlayback = () => {
