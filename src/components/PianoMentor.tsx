@@ -31,7 +31,7 @@ const PianoMentor: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedNotes, setRecordedNotes] = useState<Array<{ note: string; timestamp: number }>>([]);
   const [practiceMode, setPracticeMode] = useState('free');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('beginner');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [favoritesSongs, setFavoritesSongs] = useState(new Set<number>());
