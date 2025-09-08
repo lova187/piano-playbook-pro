@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Play, Pause, RotateCcw, Hand, Music, Volume2, 
-  ChevronLeft, ChevronRight, Clock, Target 
+  ChevronLeft, ChevronRight, Clock, Target, Piano
 } from 'lucide-react';
 import * as Tone from 'tone';
 
@@ -35,13 +35,48 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
   const [selectedPart, setSelectedPart] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
-  const synthRef = useRef<Tone.PolySynth | null>(null);
+  const [activeKeys, setActiveKeys] = useState(new Set<string>());
+  const synthRef = useRef<Tone.Sampler | null>(null);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
 
   useEffect(() => {
-    synthRef.current = new Tone.PolySynth(Tone.Synth).toDestination();
+    // Create realistic piano sampler
+    const pianoSampler = new Tone.Sampler({
+      urls: {
+        C4: "https://tonejs.github.io/audio/salamander/C4.mp3",
+        "D#4": "https://tonejs.github.io/audio/salamander/Ds4.mp3", 
+        "F#4": "https://tonejs.github.io/audio/salamander/Fs4.mp3",
+        A4: "https://tonejs.github.io/audio/salamander/A4.mp3",
+        C5: "https://tonejs.github.io/audio/salamander/C5.mp3",
+        "D#5": "https://tonejs.github.io/audio/salamander/Ds5.mp3",
+        "F#5": "https://tonejs.github.io/audio/salamander/Fs5.mp3", 
+        A5: "https://tonejs.github.io/audio/salamander/A5.mp3",
+      },
+      release: 1,
+      baseUrl: "",
+    });
+
+    // Add realistic effects
+    const reverb = new Tone.Reverb({
+      decay: 2.5,
+      wet: 0.25,
+    });
+    
+    const compressor = new Tone.Compressor({
+      threshold: -24,
+      ratio: 3,
+      attack: 0.003,
+      release: 0.1,
+    });
+
+    // Chain effects
+    pianoSampler.chain(compressor, reverb, Tone.Destination);
+    synthRef.current = pianoSampler;
+    
     return () => {
-      synthRef.current?.dispose();
+      pianoSampler.dispose();
+      reverb.dispose();
+      compressor.dispose();
       sequenceRef.current?.dispose();
     };
   }, []);
@@ -65,37 +100,86 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
       sequenceRef.current?.dispose();
       setIsPlaying(false);
       setPlaybackPosition(0);
+      setActiveKeys(new Set());
       return;
     }
 
     const { notes, timing } = currentPart;
     setIsPlaying(true);
 
-    // Create a sequence for the part
-    const sequence = new Tone.Sequence((time, note) => {
-      if (Array.isArray(note)) {
-        // Chord - play multiple notes
-        note.forEach(n => synthRef.current?.triggerAttackRelease(n, "8n", time));
+    // Create realistic timing based on the actual timing array
+    const events: { note: string | string[], time: number }[] = [];
+    notes.forEach((note, index) => {
+      events.push({
+        note,
+        time: timing[index] || index * 0.5
+      });
+    });
+
+    // Sort events by time
+    events.sort((a, b) => a.time - b.time);
+
+    let eventIndex = 0;
+    const startTime = Tone.now();
+
+    const scheduleNextEvent = () => {
+      if (eventIndex >= events.length || !isPlaying) {
+        setIsPlaying(false);
+        setPlaybackPosition(0);
+        setActiveKeys(new Set());
+        return;
+      }
+
+      const event = events[eventIndex];
+      const scheduleTime = startTime + event.time;
+      
+      // Schedule note playback
+      if (Array.isArray(event.note)) {
+        // Chord
+        event.note.forEach(n => {
+          const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
+          synthRef.current?.triggerAttackRelease(n, "2n", scheduleTime, velocity);
+        });
+        
+        // Highlight chord keys
+        Tone.Draw.schedule(() => {
+          setActiveKeys(new Set(event.note as string[]));
+          setPlaybackPosition(eventIndex);
+          setTimeout(() => setActiveKeys(new Set()), 800);
+        }, scheduleTime);
       } else {
         // Single note
-        synthRef.current?.triggerAttackRelease(note, "8n", time);
+        const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
+        synthRef.current?.triggerAttackRelease(event.note, "2n", scheduleTime, velocity);
+        
+        // Highlight key
+        Tone.Draw.schedule(() => {
+          setActiveKeys(new Set([event.note as string]));
+          setPlaybackPosition(eventIndex);
+          setTimeout(() => setActiveKeys(new Set()), 800);
+        }, scheduleTime);
       }
+
+      eventIndex++;
       
-      Tone.Draw.schedule(() => {
-        setPlaybackPosition(prev => prev + 1);
-      }, time);
-    }, notes, "4n");
+      // Schedule next event
+      const nextDelay = eventIndex < events.length ? 
+        (events[eventIndex].time - event.time) * 1000 : 1000;
+      
+      setTimeout(scheduleNextEvent, Math.max(100, nextDelay));
+    };
 
-    sequenceRef.current = sequence;
-    sequence.start(0);
-    Tone.Transport.start();
+    scheduleNextEvent();
 
-    // Stop after the sequence finishes
+    // Auto-stop after estimated duration
+    const totalDuration = events.length > 0 ? events[events.length - 1].time + 2 : 5;
     setTimeout(() => {
-      Tone.Transport.stop();
-      setIsPlaying(false);
-      setPlaybackPosition(0);
-    }, (timing[timing.length - 1] + 1) * 500); // Approximate duration
+      if (isPlaying) {
+        setIsPlaying(false);
+        setPlaybackPosition(0);
+        setActiveKeys(new Set());
+      }
+    }, totalDuration * 1000);
   };
 
   const resetPlayback = () => {
@@ -103,6 +187,83 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
     sequenceRef.current?.dispose();
     setIsPlaying(false);
     setPlaybackPosition(0);
+    setActiveKeys(new Set());
+  };
+
+  // Virtual Piano Component
+  const VirtualPianoDisplay = () => {
+    const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    const blackKeys = [
+      { note: 'C#', position: 8.5 },
+      { note: 'D#', position: 20.5 },
+      { note: 'F#', position: 44.5 },
+      { note: 'G#', position: 56.5 },
+      { note: 'A#', position: 68.5 }
+    ];
+
+    const playNote = useCallback((note: string) => {
+      if (synthRef.current) {
+        const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
+        synthRef.current.triggerAttackRelease(`${note}4`, "8n", undefined, velocity);
+        
+        setActiveKeys(prev => new Set(prev).add(`${note}4`));
+        setTimeout(() => {
+          setActiveKeys(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(`${note}4`);
+            return newSet;
+          });
+        }, 300);
+      }
+    }, []);
+
+    return (
+      <div className="relative bg-card rounded-lg p-4 border border-border">
+        <div className="flex items-center gap-2 mb-4">
+          <Piano size={16} />
+          <span className="text-sm font-medium">Interactive Piano</span>
+        </div>
+        <div className="relative h-24">
+          {/* White Keys */}
+          <div className="flex gap-0.5 h-full">
+            {whiteKeys.map((key) => {
+              const noteKey = `${key}4`;
+              return (
+                <button
+                  key={key}
+                  onMouseDown={() => playNote(key)}
+                  onTouchStart={() => playNote(key)}
+                  className={`flex-1 bg-white border border-border rounded-b-lg hover:bg-muted transition-all duration-150 shadow-sm ${
+                    activeKeys.has(noteKey) ? 'bg-primary/20 transform scale-95 shadow-glow' : ''
+                  }`}
+                >
+                  <span className="text-xs font-medium text-muted-foreground mt-auto mb-2 block">
+                    {key}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {/* Black Keys */}
+          <div className="absolute top-0 left-0 w-full h-16">
+            {blackKeys.map((key) => {
+              const noteKey = `${key.note}4`;
+              return (
+                <button
+                  key={key.note}
+                  onMouseDown={() => playNote(key.note.replace('#', '#'))}
+                  onTouchStart={() => playNote(key.note.replace('#', '#'))}
+                  style={{ left: `${key.position}%` }}
+                  className={`absolute w-6 h-full bg-foreground hover:bg-muted-foreground transition-all duration-150 rounded-b-lg shadow-md ${
+                    activeKeys.has(noteKey) ? 'bg-primary transform scale-95' : ''
+                  }`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -252,6 +413,9 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
               </div>
             )}
 
+            {/* Virtual Piano */}
+            <VirtualPianoDisplay />
+
             {/* Practice Tips */}
             <div className="bg-accent/20 p-4 rounded-lg">
               <h4 className="font-medium mb-2">💡 Practice Tips</h4>
@@ -259,6 +423,7 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
                 <li>• Start slowly and focus on accuracy over speed</li>
                 <li>• Practice each hand separately before combining</li>
                 <li>• Use the audio preview to learn the rhythm</li>
+                <li>• Watch the highlighted keys to learn finger positioning</li>
                 <li>• Repeat difficult sections multiple times</li>
               </ul>
             </div>
