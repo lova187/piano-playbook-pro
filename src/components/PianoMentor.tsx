@@ -11,6 +11,7 @@ import * as Tone from 'tone';
 import { AddSongDialog } from './AddSongDialog';
 import { SongAnalysisView } from './SongAnalysisView';
 import { MidiController } from './MidiController';
+import InteractiveLessonView from './InteractiveLessonView';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -746,141 +747,15 @@ const PianoMentor: React.FC = () => {
 
           {/* Lesson View */}
           {activeSection === 'lesson-view' && currentLesson && (
-            <div className="space-y-6">
-              <div className="text-white mb-8">
-                <div className="flex items-center gap-4 mb-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setActiveSection('learn')}
-                    className="text-white border-white hover:bg-white hover:text-purple-600"
-                  >
-                    <ArrowLeft size={16} className="mr-2" />
-                    Back to Lessons
-                  </Button>
-                </div>
-                <h1 className="text-4xl font-bold mb-2">{currentLesson.title}</h1>
-                <div className="flex items-center gap-4 text-lg opacity-90">
-                  <span className="px-3 py-1 bg-white/20 rounded-full text-sm">{currentLesson.category}</span>
-                  <span>⏱️ {currentLesson.duration}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Lesson Content */}
-                <div className="lg:col-span-2">
-                  <Card className="shadow-lg">
-                    <CardContent className="p-8">
-                      <div className="prose prose-lg max-w-none">
-                        <p className="text-lg mb-6 text-gray-600 dark:text-gray-300">
-                          {currentLesson.description}
-                        </p>
-                        
-                        <div className="space-y-6">
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border-l-4 border-blue-500">
-                            <h3 className="text-xl font-semibold mb-3 text-blue-700 dark:text-blue-300">Learning Objectives</h3>
-                            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
-                              <li>Understand the core concepts of {currentLesson.title.toLowerCase()}</li>
-                              <li>Apply practical techniques in your playing</li>
-                              <li>Recognize patterns and structures</li>
-                              <li>Build foundation for advanced concepts</li>
-                            </ul>
-                          </div>
-                          
-                          <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-lg border-l-4 border-green-500">
-                            <h3 className="text-xl font-semibold mb-3 text-green-700 dark:text-green-300">Key Points</h3>
-                            <div className="space-y-3 text-gray-700 dark:text-gray-300">
-                              <p>• Start with the fundamentals and build systematically</p>
-                              <p>• Practice slowly and focus on accuracy before speed</p>
-                              <p>• Use the virtual piano below to test your understanding</p>
-                              <p>• Take notes and review regularly for best retention</p>
-                            </div>
-                          </div>
-                          
-                          <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-lg border-l-4 border-purple-500">
-                            <h3 className="text-xl font-semibold mb-3 text-purple-700 dark:text-purple-300">Practice Exercise</h3>
-                            <p className="text-gray-700 dark:text-gray-300">
-                              Use the virtual piano in Practice Mode to apply what you've learned. 
-                              Start with simple exercises and gradually increase complexity as you build confidence.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                {/* Lesson Progress & Actions */}
-                <div className="space-y-4">
-                  <Card className="shadow-lg">
-                    <CardContent className="p-6">
-                      <h3 className="font-semibold text-lg mb-4">Lesson Progress</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">Duration</span>
-                          <span className="font-medium">{currentLesson.duration}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">Category</span>
-                          <span className="font-medium capitalize">{currentLesson.category}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
-                          <span className={`font-medium ${completedLessons.has(currentLesson.id) ? 'text-green-600' : 'text-orange-600'}`}>
-                            {completedLessons.has(currentLesson.id) ? 'Completed' : 'In Progress'}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="shadow-lg">
-                    <CardContent className="p-6">
-                      <h3 className="font-semibold text-lg mb-4">Actions</h3>
-                      <div className="space-y-3">
-                        <Button 
-                          className="w-full"
-                          onClick={() => setActiveSection('practice')}
-                        >
-                          <Piano size={16} className="mr-2" />
-                          Practice Mode
-                        </Button>
-                        
-                        {!completedLessons.has(currentLesson.id) && (
-                          <Button 
-                            className="w-full"
-                            variant="outline"
-                            onClick={() => {
-                              completeLesson(currentLesson.id);
-                              showAchievementNotification("Lesson Complete!", `You've finished ${currentLesson.title}`, "🎓");
-                            }}
-                          >
-                            <Check size={16} className="mr-2" />
-                            Mark as Complete
-                          </Button>
-                        )}
-                        
-                        <Button 
-                          className="w-full"
-                          variant="secondary"
-                          onClick={() => {
-                            const currentIndex = theoryLessons.findIndex(l => l.id === currentLesson.id);
-                            const nextLesson = theoryLessons[currentIndex + 1];
-                            if (nextLesson) {
-                              setCurrentLesson(nextLesson);
-                            }
-                          }}
-                          disabled={theoryLessons.findIndex(l => l.id === currentLesson.id) === theoryLessons.length - 1}
-                        >
-                          <ChevronRight size={16} className="mr-2" />
-                          Next Lesson
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
+            <InteractiveLessonView
+              lesson={currentLesson}
+              onComplete={() => {
+                completeLesson(currentLesson.id);
+                showAchievementNotification("Lesson Complete!", `You've finished ${currentLesson.title}`, "🎓");
+                setActiveSection('learn');
+              }}
+              onBack={() => setActiveSection('learn')}
+            />
           )}
 
           {/* Song Library */}
