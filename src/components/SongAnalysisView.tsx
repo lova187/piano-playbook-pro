@@ -36,6 +36,7 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const [activeKeys, setActiveKeys] = useState(new Set<string>());
+  const [samplerLoaded, setSamplerLoaded] = useState(false);
   const synthRef = useRef<Tone.Sampler | null>(null);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
 
@@ -54,6 +55,10 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
       },
       release: 1,
       baseUrl: "",
+      onload: () => {
+        setSamplerLoaded(true);
+        console.log('Piano sampler loaded');
+      }
     });
 
     // Add realistic effects
@@ -92,8 +97,8 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
 
   const playPart = async () => {
     console.log('Play part button clicked');
-    if (!synthRef.current || !currentPart) {
-      console.log('Missing synth or part:', { synth: !!synthRef.current, part: !!currentPart });
+    if (!synthRef.current || !currentPart || !samplerLoaded) {
+      console.log('Missing prerequisites:', { synth: !!synthRef.current, part: !!currentPart, samplerLoaded });
       return;
     }
     
@@ -348,10 +353,10 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
               <Button
                 onClick={playPart}
                 className="flex items-center gap-2"
-                disabled={!currentPart}
+                disabled={!currentPart || !samplerLoaded}
               >
                 {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                {isPlaying ? 'Stop' : 'Play Part'}
+                {isPlaying ? 'Stop' : (samplerLoaded ? 'Play Part' : 'Loading Piano...')}
               </Button>
               
               <Button
@@ -365,7 +370,7 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
 
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Volume2 size={16} />
-                Audio Preview
+                {samplerLoaded ? 'Audio Preview' : 'Preparing samples...'}
               </div>
             </div>
 
