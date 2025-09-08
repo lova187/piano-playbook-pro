@@ -155,39 +155,50 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
 
   const lessonSteps = generateLessonSteps(lesson);
 
-  // Text-to-Speech function using ElevenLabs
+  // Text-to-Speech function using Web Speech API
   const speakText = useCallback(async (text: string) => {
     if (!audioEnabled) return;
     
     setIsNarrating(true);
+    
     try {
-      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL', {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5
-          }
-        })
-      });
-
-      if (response.ok) {
-        const audioBuffer = await response.arrayBuffer();
-        const audioContext = new AudioContext();
-        const decodedAudio = await audioContext.decodeAudioData(audioBuffer);
-        const source = audioContext.createBufferSource();
-        source.buffer = decodedAudio;
-        source.connect(audioContext.destination);
-        source.start();
+      // Check if speech synthesis is supported
+      if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech
+        window.speechSynthesis.cancel();
         
-        source.onended = () => setIsNarrating(false);
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Configure voice settings
+        utterance.rate = 0.9; // Slightly slower for better comprehension
+        utterance.pitch = 1.0;
+        utterance.volume = 0.8;
+        
+        // Try to find a better voice (prefer female voices for teaching)
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice => 
+          voice.lang.startsWith('en') && 
+          (voice.name.includes('Female') || voice.name.includes('Sarah') || voice.name.includes('Samantha'))
+        ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+        
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+        
+        utterance.onend = () => {
+          setIsNarrating(false);
+        };
+        
+        utterance.onerror = () => {
+          setIsNarrating(false);
+          console.error('Speech synthesis error');
+        };
+        
+        window.speechSynthesis.speak(utterance);
+      } else {
+        // Fallback: show text in console and stop narrating state
+        console.log('Narration:', text);
+        setIsNarrating(false);
       }
     } catch (error) {
       console.error('Text-to-speech error:', error);
@@ -239,6 +250,21 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const handleStepComplete = () => {
     setCompletedSteps(prev => new Set(prev).add(currentStep));
   };
+
+  // Load voices when component mounts
+  useEffect(() => {
+    // Load voices for speech synthesis
+    if ('speechSynthesis' in window) {
+      let voices = window.speechSynthesis.getVoices();
+      
+      // If voices aren't loaded yet, wait for them
+      if (voices.length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          voices = window.speechSynthesis.getVoices();
+        };
+      }
+    }
+  }, []);
 
   // Auto-narrate when step changes
   useEffect(() => {
