@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -147,6 +147,9 @@ export const AddSongDialog: React.FC<AddSongDialogProps> = ({ onSongAdded }) => 
             <Music size={20} />
             Add Song for AI Analysis
           </DialogTitle>
+          <DialogDescription>
+            Add a song via YouTube or by name for AI-powered breakdown into practice parts
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">

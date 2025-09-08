@@ -10,6 +10,7 @@ import {
 import * as Tone from 'tone';
 import { AddSongDialog } from './AddSongDialog';
 import { SongAnalysisView } from './SongAnalysisView';
+import { MidiController } from './MidiController';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -154,15 +155,25 @@ const PianoMentor: React.FC = () => {
   };
 
   const handleSongAdded = (song: any) => {
-    setCustomSongs(prev => [...prev, song]);
+    console.log('Adding song:', song);
+    setCustomSongs(prev => {
+      const updated = [...prev, song];
+      console.log('Updated custom songs:', updated);
+      return updated;
+    });
     addXP(200, 'Custom song added');
     showAchievementNotification("Song Added!", `${song.title} has been analyzed and added to your library`, "🎵");
   };
 
-  const handleNotePlay = (note: string) => {
+  const handleNotePlay = (note: string, velocity: number = 1) => {
     if (isRecording) {
       setRecordedNotes(prev => [...prev, { note, timestamp: Date.now() }]);
     }
+  };
+
+  const handleNoteStop = (note: string) => {
+    // Handle note off for sustained notes
+    console.log('Note stopped:', note);
   };
 
   const toggleFavorite = (songId: number) => {
@@ -505,7 +516,7 @@ const PianoMentor: React.FC = () => {
                   <Card className="shadow-lg mb-6">
                     <CardHeader>
                       <CardTitle>Virtual Piano</CardTitle>
-                      <CardDescription>Play and practice with our virtual keyboard</CardDescription>
+                      <CardDescription>Play and practice with our virtual keyboard or connect your MIDI device</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <VirtualPiano onNotePlay={handleNotePlay} isRecording={isRecording} />
@@ -534,6 +545,12 @@ const PianoMentor: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
+                  {/* MIDI Controller */}
+                  <MidiController 
+                    onNotePlay={handleNotePlay}
+                    onNoteStop={handleNoteStop}
+                  />
+
                   <Card className="shadow-lg">
                     <CardHeader>
                       <CardTitle>Practice Settings</CardTitle>
