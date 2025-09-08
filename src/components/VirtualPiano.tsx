@@ -8,18 +8,56 @@ interface VirtualPianoProps {
 
 const VirtualPiano: React.FC<VirtualPianoProps> = ({ onNotePlay, isRecording }) => {
   const [activeNotes, setActiveNotes] = useState(new Set<string>());
-  const synthRef = useRef<Tone.PolySynth | null>(null);
+  const synthRef = useRef<Tone.Sampler | null>(null);
 
   useEffect(() => {
-    synthRef.current = new Tone.PolySynth(Tone.Synth).toDestination();
+    // Create a piano sampler with better sounds
+    const pianoSampler = new Tone.Sampler({
+      urls: {
+        C4: "https://tonejs.github.io/audio/salamander/C4.mp3",
+        "D#4": "https://tonejs.github.io/audio/salamander/Ds4.mp3", 
+        "F#4": "https://tonejs.github.io/audio/salamander/Fs4.mp3",
+        A4: "https://tonejs.github.io/audio/salamander/A4.mp3",
+        C5: "https://tonejs.github.io/audio/salamander/C5.mp3",
+        "D#5": "https://tonejs.github.io/audio/salamander/Ds5.mp3",
+        "F#5": "https://tonejs.github.io/audio/salamander/Fs5.mp3", 
+        A5: "https://tonejs.github.io/audio/salamander/A5.mp3",
+      },
+      release: 1,
+      baseUrl: "",
+    });
+
+    // Add effects for more realistic piano sound
+    const reverb = new Tone.Reverb({
+      decay: 2.5,
+      wet: 0.25,
+    });
+    
+    const compressor = new Tone.Compressor({
+      threshold: -24,
+      ratio: 3,
+      attack: 0.003,
+      release: 0.1,
+    });
+
+    // Chain: Piano -> Compressor -> Reverb -> Output
+    pianoSampler.chain(compressor, reverb, Tone.Destination);
+    
+    synthRef.current = pianoSampler;
+    
     return () => {
-      synthRef.current?.dispose();
+      pianoSampler.dispose();
+      reverb.dispose();  
+      compressor.dispose();
     };
   }, []);
 
   const playNote = useCallback((note: string) => {
     if (synthRef.current) {
-      synthRef.current.triggerAttackRelease(note, "8n");
+      // Add slight velocity variation for more natural sound
+      const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
+      synthRef.current.triggerAttackRelease(note, "2n", undefined, velocity);
+      
       setActiveNotes(prev => new Set(prev).add(note));
       setTimeout(() => {
         setActiveNotes(prev => {
@@ -27,7 +65,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({ onNotePlay, isRecording }) 
           newSet.delete(note);
           return newSet;
         });
-      }, 200);
+      }, 300);
       onNotePlay?.(note);
     }
   }, [onNotePlay]);

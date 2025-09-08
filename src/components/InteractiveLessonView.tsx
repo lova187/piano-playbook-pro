@@ -42,16 +42,47 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-  const [synth, setSynth] = useState<Tone.Synth | null>(null);
+  const [synth, setSynth] = useState<Tone.Sampler | null>(null);
   const [isNarrating, setIsNarrating] = useState(false);
 
-  // Initialize Tone.js synthesizer
+  // Initialize Tone.js piano sampler with better sounds
   useEffect(() => {
-    const newSynth = new Tone.Synth().toDestination();
-    setSynth(newSynth);
+    // Create a piano sampler with multiple samples for better sound quality
+    const pianoSampler = new Tone.Sampler({
+      urls: {
+        C4: "https://tonejs.github.io/audio/salamander/C4.mp3",
+        "D#4": "https://tonejs.github.io/audio/salamander/Ds4.mp3",
+        "F#4": "https://tonejs.github.io/audio/salamander/Fs4.mp3",
+        A4: "https://tonejs.github.io/audio/salamander/A4.mp3",
+        C5: "https://tonejs.github.io/audio/salamander/C5.mp3",
+        "D#5": "https://tonejs.github.io/audio/salamander/Ds5.mp3",
+        "F#5": "https://tonejs.github.io/audio/salamander/Fs5.mp3",
+        A5: "https://tonejs.github.io/audio/salamander/A5.mp3",
+      },
+      release: 1,
+      baseUrl: "",
+    }).toDestination();
+
+    // Add reverb and compressor for more realistic sound
+    const reverb = new Tone.Reverb({
+      decay: 3,
+      wet: 0.3,
+    }).toDestination();
+    
+    const compressor = new Tone.Compressor({
+      threshold: -30,
+      ratio: 3,
+      attack: 0.003,
+      release: 0.1,
+    });
+
+    pianoSampler.chain(compressor, reverb);
+    setSynth(pianoSampler);
     
     return () => {
-      newSynth.dispose();
+      pianoSampler.dispose();
+      reverb.dispose();
+      compressor.dispose();
     };
   }, []);
 
@@ -164,18 +195,27 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
     }
   }, [audioEnabled]);
 
-  // Play piano notes
+  // Play piano notes with more realistic timing and dynamics
   const playNotes = useCallback(async (notes: string[], hand: 'left' | 'right' = 'right') => {
     if (!synth || !audioEnabled) return;
     
     setIsPlaying(true);
     await Tone.start();
     
+    // Add slight timing variations for more human-like playing
+    const baseDelay = hand === 'left' ? 0 : 0.02; // Left hand slightly ahead
+    
     for (let i = 0; i < notes.length; i++) {
-      synth.triggerAttackRelease(notes[i], "8n", Tone.now() + i * 0.5);
+      const timing = Tone.now() + baseDelay + i * 0.6 + (Math.random() * 0.02 - 0.01);
+      const velocity = 0.7 + (Math.random() * 0.2 - 0.1); // Slight velocity variation
+      const duration = "4n";
+      
+      if (synth.triggerAttackRelease) {
+        synth.triggerAttackRelease(notes[i], duration, timing, velocity);
+      }
     }
     
-    setTimeout(() => setIsPlaying(false), notes.length * 500);
+    setTimeout(() => setIsPlaying(false), notes.length * 600 + 1000);
   }, [synth, audioEnabled]);
 
   const currentStepData = lessonSteps[currentStep];
