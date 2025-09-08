@@ -5,7 +5,7 @@ import {
   Volume2, Settings, Search, Filter, Download, Upload, Share2, Menu, X,
   Check, AlertCircle, Loader, Home, GraduationCap, Trophy, Users,
   Mic, Camera, Repeat, SkipForward, SkipBack, Maximize2, MessageSquare,
-  Heart, Star, Lock, Unlock, ArrowLeft, ArrowRight, PlusCircle
+  Heart, Star, Lock, Unlock, ArrowLeft, ArrowRight, PlusCircle, Piano
 } from 'lucide-react';
 import * as Tone from 'tone';
 import { AddSongDialog } from './AddSongDialog';
@@ -23,6 +23,7 @@ const PianoMentor: React.FC = () => {
   // State Management
   const [theme, setTheme] = useState('light');
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [currentLesson, setCurrentLesson] = useState(null);
   const [showAchievement, setShowAchievement] = useState(false);
   const [achievementData, setAchievementData] = useState({ title: '', description: '', icon: '🏆' });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,12 +70,67 @@ const PianoMentor: React.FC = () => {
 
   // Theory lessons data
   const theoryLessons = useMemo(() => [
-    { id: 1, title: "Reading Music Notation", category: "basics", duration: "15 min", completed: false },
-    { id: 2, title: "Major and Minor Scales", category: "scales", duration: "20 min", completed: false },
-    { id: 3, title: "Chord Construction", category: "harmony", duration: "25 min", completed: false },
-    { id: 4, title: "Time Signatures", category: "rhythm", duration: "15 min", completed: false },
-    { id: 5, title: "Key Signatures", category: "theory", duration: "20 min", completed: false },
-    { id: 6, title: "Intervals", category: "harmony", duration: "30 min", completed: false }
+    // Basics
+    { id: 1, title: "Reading Music Notation", category: "basics", duration: "15 min", completed: false, description: "Learn to read notes on the staff" },
+    { id: 2, title: "The Piano Keyboard", category: "basics", duration: "12 min", completed: false, description: "Understanding keys, octaves, and layout" },
+    { id: 3, title: "Note Names and Values", category: "basics", duration: "18 min", completed: false, description: "Whole notes, half notes, quarters, and beyond" },
+    { id: 4, title: "Rhythm Fundamentals", category: "basics", duration: "20 min", completed: false, description: "Beat, tempo, and basic counting" },
+    
+    // Scales
+    { id: 5, title: "Major Scales", category: "scales", duration: "25 min", completed: false, description: "Construction and patterns of major scales" },
+    { id: 6, title: "Minor Scales", category: "scales", duration: "25 min", completed: false, description: "Natural, harmonic, and melodic minor scales" },
+    { id: 7, title: "Chromatic Scale", category: "scales", duration: "15 min", completed: false, description: "All 12 pitches in sequence" },
+    { id: 8, title: "Pentatonic Scales", category: "scales", duration: "20 min", completed: false, description: "Major and minor pentatonic scales" },
+    { id: 9, title: "Blues Scale", category: "scales", duration: "18 min", completed: false, description: "The blues scale and its applications" },
+    { id: 10, title: "Modal Scales", category: "scales", duration: "35 min", completed: false, description: "Dorian, Mixolydian, and other modes" },
+    
+    // Intervals and Harmony
+    { id: 11, title: "Intervals", category: "harmony", duration: "30 min", completed: false, description: "Perfect, major, minor, augmented, diminished" },
+    { id: 12, title: "Triads", category: "harmony", duration: "25 min", completed: false, description: "Major, minor, diminished, augmented triads" },
+    { id: 13, title: "Seventh Chords", category: "harmony", duration: "30 min", completed: false, description: "Dominant, major, minor, and half-diminished 7ths" },
+    { id: 14, title: "Extended Chords", category: "harmony", duration: "35 min", completed: false, description: "9th, 11th, 13th chords and their uses" },
+    { id: 15, title: "Chord Inversions", category: "harmony", duration: "25 min", completed: false, description: "Root position, first, and second inversions" },
+    { id: 16, title: "Voice Leading", category: "harmony", duration: "40 min", completed: false, description: "Smooth movement between chords" },
+    
+    // Rhythm and Time
+    { id: 17, title: "Time Signatures", category: "rhythm", duration: "20 min", completed: false, description: "Simple and compound time signatures" },
+    { id: 18, title: "Syncopation", category: "rhythm", duration: "25 min", completed: false, description: "Off-beat rhythms and patterns" },
+    { id: 19, title: "Polyrhythm", category: "rhythm", duration: "30 min", completed: false, description: "Multiple rhythms simultaneously" },
+    { id: 20, title: "Swing and Shuffle", category: "rhythm", duration: "22 min", completed: false, description: "Jazz and blues rhythmic feels" },
+    
+    // Advanced Theory
+    { id: 21, title: "Key Signatures", category: "theory", duration: "25 min", completed: false, description: "Circle of fifths and key relationships" },
+    { id: 22, title: "Circle of Fifths", category: "theory", duration: "30 min", completed: false, description: "Key relationships and modulation" },
+    { id: 23, title: "Roman Numeral Analysis", category: "theory", duration: "35 min", completed: false, description: "Analyzing chord progressions" },
+    { id: 24, title: "Secondary Dominants", category: "theory", duration: "40 min", completed: false, description: "V/V and other secondary functions" },
+    { id: 25, title: "Modulation Techniques", category: "theory", duration: "45 min", completed: false, description: "Common chord and pivot modulation" },
+    { id: 26, title: "Non-Chord Tones", category: "theory", duration: "35 min", completed: false, description: "Passing tones, suspensions, appoggiature" },
+    
+    // Form and Analysis
+    { id: 27, title: "Song Forms", category: "form", duration: "30 min", completed: false, description: "ABA, AABA, verse-chorus structures" },
+    { id: 28, title: "Classical Forms", category: "form", duration: "40 min", completed: false, description: "Sonata, rondo, theme and variations" },
+    { id: 29, title: "Phrase Structure", category: "form", duration: "25 min", completed: false, description: "Periods, sentences, and cadences" },
+    
+    // Genre-Specific
+    { id: 30, title: "Jazz Theory Basics", category: "jazz", duration: "45 min", completed: false, description: "Jazz chord symbols and progressions" },
+    { id: 31, title: "Blues Progressions", category: "blues", duration: "30 min", completed: false, description: "12-bar blues and variations" },
+    { id: 32, title: "Pop Chord Progressions", category: "pop", duration: "25 min", completed: false, description: "Common progressions in popular music" },
+    { id: 33, title: "Classical Harmony", category: "classical", duration: "50 min", completed: false, description: "Bach chorales and classical voice leading" },
+    
+    // Ear Training
+    { id: 34, title: "Interval Recognition", category: "ear-training", duration: "30 min", completed: false, description: "Identifying intervals by ear" },
+    { id: 35, title: "Chord Recognition", category: "ear-training", duration: "35 min", completed: false, description: "Identifying chord qualities by ear" },
+    { id: 36, title: "Scale Recognition", category: "ear-training", duration: "30 min", completed: false, description: "Major, minor, and modal recognition" },
+    
+    // Composition
+    { id: 37, title: "Melody Writing", category: "composition", duration: "40 min", completed: false, description: "Creating memorable melodies" },
+    { id: 38, title: "Counterpoint Basics", category: "composition", duration: "45 min", completed: false, description: "Writing independent melodic lines" },
+    { id: 39, title: "Arrangement Techniques", category: "composition", duration: "50 min", completed: false, description: "Orchestrating for different instruments" },
+    
+    // Performance
+    { id: 40, title: "Piano Technique", category: "performance", duration: "35 min", completed: false, description: "Proper hand position and fingering" },
+    { id: 41, title: "Pedaling Techniques", category: "performance", duration: "25 min", completed: false, description: "Sustain and soft pedal usage" },
+    { id: 42, title: "Dynamics and Expression", category: "performance", duration: "30 min", completed: false, description: "Musical expression and interpretation" }
   ], []);
 
   // Achievements data
@@ -642,31 +698,187 @@ const PianoMentor: React.FC = () => {
                       </div>
 
                       <div className="space-y-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                          {lesson.description}
+                        </p>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
                           Duration: {lesson.duration}
                         </div>
 
-                        <Button 
-                          className="w-full"
-                          onClick={() => completeLesson(lesson.id)}
-                          disabled={completedLessons.has(lesson.id)}
-                        >
-                          {completedLessons.has(lesson.id) ? (
-                            <>
-                              <Check size={16} className="mr-2" />
-                              Completed
-                            </>
-                          ) : (
-                            <>
+                        {completedLessons.has(lesson.id) ? (
+                          <Button 
+                            className="w-full"
+                            disabled
+                            variant="secondary"
+                          >
+                            <Check size={16} className="mr-2" />
+                            Completed
+                          </Button>
+                        ) : (
+                          <div className="space-y-2">
+                            <Button 
+                              className="w-full"
+                              onClick={() => {
+                                setActiveSection('lesson-view');
+                                setCurrentLesson(lesson);
+                              }}
+                            >
                               <Play size={16} className="mr-2" />
                               Start Lesson
-                            </>
-                          )}
-                        </Button>
+                            </Button>
+                            <Button 
+                              className="w-full"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => completeLesson(lesson.id)}
+                            >
+                              Mark Complete
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Lesson View */}
+          {activeSection === 'lesson-view' && currentLesson && (
+            <div className="space-y-6">
+              <div className="text-white mb-8">
+                <div className="flex items-center gap-4 mb-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setActiveSection('learn')}
+                    className="text-white border-white hover:bg-white hover:text-purple-600"
+                  >
+                    <ArrowLeft size={16} className="mr-2" />
+                    Back to Lessons
+                  </Button>
+                </div>
+                <h1 className="text-4xl font-bold mb-2">{currentLesson.title}</h1>
+                <div className="flex items-center gap-4 text-lg opacity-90">
+                  <span className="px-3 py-1 bg-white/20 rounded-full text-sm">{currentLesson.category}</span>
+                  <span>⏱️ {currentLesson.duration}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Lesson Content */}
+                <div className="lg:col-span-2">
+                  <Card className="shadow-lg">
+                    <CardContent className="p-8">
+                      <div className="prose prose-lg max-w-none">
+                        <p className="text-lg mb-6 text-gray-600 dark:text-gray-300">
+                          {currentLesson.description}
+                        </p>
+                        
+                        <div className="space-y-6">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border-l-4 border-blue-500">
+                            <h3 className="text-xl font-semibold mb-3 text-blue-700 dark:text-blue-300">Learning Objectives</h3>
+                            <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                              <li>Understand the core concepts of {currentLesson.title.toLowerCase()}</li>
+                              <li>Apply practical techniques in your playing</li>
+                              <li>Recognize patterns and structures</li>
+                              <li>Build foundation for advanced concepts</li>
+                            </ul>
+                          </div>
+                          
+                          <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-lg border-l-4 border-green-500">
+                            <h3 className="text-xl font-semibold mb-3 text-green-700 dark:text-green-300">Key Points</h3>
+                            <div className="space-y-3 text-gray-700 dark:text-gray-300">
+                              <p>• Start with the fundamentals and build systematically</p>
+                              <p>• Practice slowly and focus on accuracy before speed</p>
+                              <p>• Use the virtual piano below to test your understanding</p>
+                              <p>• Take notes and review regularly for best retention</p>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-lg border-l-4 border-purple-500">
+                            <h3 className="text-xl font-semibold mb-3 text-purple-700 dark:text-purple-300">Practice Exercise</h3>
+                            <p className="text-gray-700 dark:text-gray-300">
+                              Use the virtual piano in Practice Mode to apply what you've learned. 
+                              Start with simple exercises and gradually increase complexity as you build confidence.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Lesson Progress & Actions */}
+                <div className="space-y-4">
+                  <Card className="shadow-lg">
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold text-lg mb-4">Lesson Progress</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Duration</span>
+                          <span className="font-medium">{currentLesson.duration}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Category</span>
+                          <span className="font-medium capitalize">{currentLesson.category}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
+                          <span className={`font-medium ${completedLessons.has(currentLesson.id) ? 'text-green-600' : 'text-orange-600'}`}>
+                            {completedLessons.has(currentLesson.id) ? 'Completed' : 'In Progress'}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="shadow-lg">
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold text-lg mb-4">Actions</h3>
+                      <div className="space-y-3">
+                        <Button 
+                          className="w-full"
+                          onClick={() => setActiveSection('practice')}
+                        >
+                          <Piano size={16} className="mr-2" />
+                          Practice Mode
+                        </Button>
+                        
+                        {!completedLessons.has(currentLesson.id) && (
+                          <Button 
+                            className="w-full"
+                            variant="outline"
+                            onClick={() => {
+                              completeLesson(currentLesson.id);
+                              showAchievementNotification("Lesson Complete!", `You've finished ${currentLesson.title}`, "🎓");
+                            }}
+                          >
+                            <Check size={16} className="mr-2" />
+                            Mark as Complete
+                          </Button>
+                        )}
+                        
+                        <Button 
+                          className="w-full"
+                          variant="secondary"
+                          onClick={() => {
+                            const currentIndex = theoryLessons.findIndex(l => l.id === currentLesson.id);
+                            const nextLesson = theoryLessons[currentIndex + 1];
+                            if (nextLesson) {
+                              setCurrentLesson(nextLesson);
+                            }
+                          }}
+                          disabled={theoryLessons.findIndex(l => l.id === currentLesson.id) === theoryLessons.length - 1}
+                        >
+                          <ChevronRight size={16} className="mr-2" />
+                          Next Lesson
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
           )}
