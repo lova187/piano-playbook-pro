@@ -318,7 +318,7 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
     }
   }, [audioEnabled, speechError, lastNarrationAttempt]);
 
-  // Play piano notes with more realistic timing and dynamics
+  // Play piano notes with more realistic timing and dynamics + key highlighting
   const playNotes = useCallback(async (notes: string[], hand: 'left' | 'right' = 'right') => {
     if (!synth || !audioEnabled) return;
     
@@ -333,12 +333,25 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
       const velocity = 0.7 + (Math.random() * 0.2 - 0.1); // Slight velocity variation
       const duration = "4n";
       
+      // Highlight key when note is played
+      setTimeout(() => {
+        setHighlightedKeys(new Set([notes[i]]));
+      }, (baseDelay + i * 0.6) * 1000);
+      
+      // Remove highlight after note duration
+      setTimeout(() => {
+        setHighlightedKeys(new Set());
+      }, (baseDelay + i * 0.6 + 0.4) * 1000); // 400ms highlight duration
+      
       if (synth.triggerAttackRelease) {
         synth.triggerAttackRelease(notes[i], duration, timing, velocity);
       }
     }
     
-    setTimeout(() => setIsPlaying(false), notes.length * 600 + 1000);
+    setTimeout(() => {
+      setIsPlaying(false);
+      setHighlightedKeys(new Set()); // Clear any remaining highlights
+    }, notes.length * 600 + 1000);
   }, [synth, audioEnabled]);
 
   const currentStepData = lessonSteps[currentStep];
