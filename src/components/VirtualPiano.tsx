@@ -66,14 +66,36 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
   useEffect(() => {
     const pianoSampler = new Tone.Sampler({
       urls: {
+        A0: "https://tonejs.github.io/audio/salamander/A0.mp3",
+        C1: "https://tonejs.github.io/audio/salamander/C1.mp3",
+        "D#1": "https://tonejs.github.io/audio/salamander/Ds1.mp3",
+        "F#1": "https://tonejs.github.io/audio/salamander/Fs1.mp3",
+        A1: "https://tonejs.github.io/audio/salamander/A1.mp3",
+        C2: "https://tonejs.github.io/audio/salamander/C2.mp3",
+        "D#2": "https://tonejs.github.io/audio/salamander/Ds2.mp3",
+        "F#2": "https://tonejs.github.io/audio/salamander/Fs2.mp3",
+        A2: "https://tonejs.github.io/audio/salamander/A2.mp3",
+        C3: "https://tonejs.github.io/audio/salamander/C3.mp3",
+        "D#3": "https://tonejs.github.io/audio/salamander/Ds3.mp3",
+        "F#3": "https://tonejs.github.io/audio/salamander/Fs3.mp3",
+        A3: "https://tonejs.github.io/audio/salamander/A3.mp3",
         C4: "https://tonejs.github.io/audio/salamander/C4.mp3",
-        "D#4": "https://tonejs.github.io/audio/salamander/Ds4.mp3", 
+        "D#4": "https://tonejs.github.io/audio/salamander/Ds4.mp3",
         "F#4": "https://tonejs.github.io/audio/salamander/Fs4.mp3",
         A4: "https://tonejs.github.io/audio/salamander/A4.mp3",
         C5: "https://tonejs.github.io/audio/salamander/C5.mp3",
         "D#5": "https://tonejs.github.io/audio/salamander/Ds5.mp3",
-        "F#5": "https://tonejs.github.io/audio/salamander/Fs5.mp3", 
+        "F#5": "https://tonejs.github.io/audio/salamander/Fs5.mp3",
         A5: "https://tonejs.github.io/audio/salamander/A5.mp3",
+        C6: "https://tonejs.github.io/audio/salamander/C6.mp3",
+        "D#6": "https://tonejs.github.io/audio/salamander/Ds6.mp3",
+        "F#6": "https://tonejs.github.io/audio/salamander/Fs6.mp3",
+        A6: "https://tonejs.github.io/audio/salamander/A6.mp3",
+        C7: "https://tonejs.github.io/audio/salamander/C7.mp3",
+        "D#7": "https://tonejs.github.io/audio/salamander/Ds7.mp3",
+        "F#7": "https://tonejs.github.io/audio/salamander/Fs7.mp3",
+        A7: "https://tonejs.github.io/audio/salamander/A7.mp3",
+        C8: "https://tonejs.github.io/audio/salamander/C8.mp3"
       },
       release: 1,
       baseUrl: "",
@@ -133,7 +155,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         </div>
       )}
       
-      <div className="relative h-32 min-w-[1000px]">
+      <div className="relative h-32" style={{ minWidth: `${whiteKeys.length * 16}px` }}>
         {/* White Keys */}
         <div className="flex h-full gap-0">
           {whiteKeys.map((key, index) => {
@@ -153,10 +175,10 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                     ? 'bg-primary text-primary-foreground shadow-lg'
                     : 'bg-white hover:bg-gray-50'
                 }`}
-                style={{ width: '18px', minWidth: '18px' }}
+                style={{ width: '16px', minWidth: '16px' }}
               >
-                <span className="text-[9px] font-medium text-gray-500 pointer-events-none">
-                  {index % 7 === 0 || key.note.includes('C') ? noteLabel : ''}
+                <span className="text-[8px] font-medium text-gray-500 pointer-events-none">
+                  {key.note.includes('C') && key.note !== 'C8' ? noteLabel + key.note.slice(-1) : ''}
                 </span>
               </button>
             );
@@ -168,7 +190,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
           {blackKeys.map((key) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
-            const leftPosition = (key.whiteIndex * 18) + 12; // 18px per white key, offset by 12px
+            const leftPosition = (key.whiteIndex * 16) + 11; // 16px per white key, offset by 11px
             
             return (
               <button
@@ -184,7 +206,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                 }`}
                 style={{ 
                   left: `${leftPosition}px`,
-                  width: '10px'
+                  width: '9px'
                 }}
               />
             );
@@ -193,12 +215,12 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
       </div>
       
       {/* Octave indicators */}
-      <div className="flex justify-between mt-2 text-xs text-muted-foreground px-2">
+      <div className="flex justify-between mt-2 text-xs text-muted-foreground px-1">
         <span>A0</span>
         <span>C1</span>
         <span>C2</span>
         <span>C3</span>
-        <span>C4</span>
+        <span>C4 (Middle C)</span>
         <span>C5</span>
         <span>C6</span>
         <span>C7</span>
