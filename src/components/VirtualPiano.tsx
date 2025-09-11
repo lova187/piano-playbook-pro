@@ -155,7 +155,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         </div>
       )}
       
-      <div className="relative h-32" style={{ minWidth: `${whiteKeys.length * 16}px` }}>
+      <div className="relative h-40" style={{ minWidth: `${whiteKeys.length * 24}px` }}>
         {/* White Keys */}
         <div className="flex h-full gap-0">
           {whiteKeys.map((key, index) => {
@@ -168,16 +168,16 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                 key={key.note}
                 onMouseDown={() => playNote(key.note)}
                 onTouchStart={() => playNote(key.note)}
-                className={`h-full border border-gray-300 rounded-b-lg transition-all duration-150 shadow-sm flex items-end justify-center pb-2 ${
+                className={`h-full border border-gray-300 rounded-b-lg transition-all duration-150 shadow-sm flex items-end justify-center pb-3 ${
                   isActive 
                     ? 'bg-accent transform scale-95 shadow-lg' 
                     : isHighlighted
                     ? 'bg-primary text-primary-foreground shadow-lg'
                     : 'bg-white hover:bg-gray-50'
                 }`}
-                style={{ width: '16px', minWidth: '16px' }}
+                style={{ width: '24px', minWidth: '24px' }}
               >
-                <span className="text-[8px] font-medium text-gray-500 pointer-events-none">
+                <span className="text-xs font-medium text-gray-500 pointer-events-none">
                   {key.note.includes('C') && key.note !== 'C8' ? noteLabel + key.note.slice(-1) : ''}
                 </span>
               </button>
@@ -186,11 +186,11 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         </div>
         
         {/* Black Keys */}
-        <div className="absolute top-0 left-0 w-full h-20">
+        <div className="absolute top-0 left-0 w-full h-24">
           {blackKeys.map((key) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
-            const leftPosition = (key.whiteIndex * 16) + 11; // 16px per white key, offset by 11px
+            const leftPosition = (key.whiteIndex * 24) + 16; // 24px per white key, offset by 16px
             
             return (
               <button
@@ -206,7 +206,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                 }`}
                 style={{ 
                   left: `${leftPosition}px`,
-                  width: '9px'
+                  width: '14px'
                 }}
               />
             );
@@ -215,7 +215,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
       </div>
       
       {/* Octave indicators */}
-      <div className="flex justify-between mt-2 text-xs text-muted-foreground px-1">
+      <div className="flex justify-between mt-3 text-xs text-muted-foreground px-2">
         <span>A0</span>
         <span>C1</span>
         <span>C2</span>
