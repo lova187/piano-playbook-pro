@@ -133,7 +133,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         </div>
       )}
       
-      <div className="relative h-32 min-w-[1800px]">
+      <div className="relative h-32 min-w-[1000px]">
         {/* White Keys */}
         <div className="flex h-full gap-0">
           {whiteKeys.map((key, index) => {
@@ -153,9 +153,9 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                     ? 'bg-primary text-primary-foreground shadow-lg'
                     : 'bg-white hover:bg-gray-50'
                 }`}
-                style={{ width: '20px', minWidth: '20px' }}
+                style={{ width: '18px', minWidth: '18px' }}
               >
-                <span className="text-[10px] font-medium text-gray-500 pointer-events-none">
+                <span className="text-[9px] font-medium text-gray-500 pointer-events-none">
                   {index % 7 === 0 || key.note.includes('C') ? noteLabel : ''}
                 </span>
               </button>
@@ -168,7 +168,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
           {blackKeys.map((key) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
-            const leftPosition = (key.whiteIndex * 20) + 14; // 20px per white key, offset by 14px
+            const leftPosition = (key.whiteIndex * 18) + 12; // 18px per white key, offset by 12px
             
             return (
               <button
@@ -184,7 +184,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                 }`}
                 style={{ 
                   left: `${leftPosition}px`,
-                  width: '12px'
+                  width: '10px'
                 }}
               />
             );
