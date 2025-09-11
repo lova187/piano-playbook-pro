@@ -141,7 +141,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
   }, [onNotePlay]);
 
   return (
-    <div className="relative bg-card rounded-xl p-4 shadow-elegant border border-border overflow-x-auto">
+    <div className="relative bg-card rounded-xl p-4 shadow-elegant border border-border w-full">
       {isRecording && (
         <div className="absolute top-4 right-4 flex items-center gap-2 text-destructive z-10">
           <div className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
@@ -155,9 +155,9 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         </div>
       )}
       
-      <div className="relative h-40" style={{ minWidth: `${whiteKeys.length * 24}px` }}>
+      <div className="relative h-40 w-full">
         {/* White Keys */}
-        <div className="flex h-full gap-0">
+        <div className="flex h-full w-full gap-0">
           {whiteKeys.map((key, index) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
@@ -168,17 +168,16 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                 key={key.note}
                 onMouseDown={() => playNote(key.note)}
                 onTouchStart={() => playNote(key.note)}
-                className={`h-full border border-gray-300 rounded-b-lg transition-all duration-150 shadow-sm flex items-end justify-center pb-3 ${
+                className={`h-full border border-gray-300 rounded-b-lg transition-all duration-150 shadow-sm flex items-end justify-center pb-3 flex-1 ${
                   isActive 
                     ? 'bg-accent transform scale-95 shadow-lg' 
                     : isHighlighted
                     ? 'bg-primary text-primary-foreground shadow-lg'
                     : 'bg-white hover:bg-gray-50'
                 }`}
-                style={{ width: '24px', minWidth: '24px' }}
               >
-                <span className="text-xs font-medium text-gray-500 pointer-events-none">
-                  {key.note.includes('C') && key.note !== 'C8' ? noteLabel + key.note.slice(-1) : ''}
+                <span className="text-[10px] font-medium text-gray-500 pointer-events-none">
+                  {key.note.includes('C') ? noteLabel + key.note.slice(-1) : ''}
                 </span>
               </button>
             );
@@ -190,7 +189,8 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
           {blackKeys.map((key) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
-            const leftPosition = (key.whiteIndex * 24) + 16; // 24px per white key, offset by 16px
+            const whiteKeyWidth = 100 / whiteKeys.length; // Percentage width per white key
+            const leftPosition = (key.whiteIndex * whiteKeyWidth) + (whiteKeyWidth * 0.7); // Position at 70% of white key
             
             return (
               <button
@@ -205,8 +205,8 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                     : 'bg-gray-800 hover:bg-gray-700'
                 }`}
                 style={{ 
-                  left: `${leftPosition}px`,
-                  width: '14px'
+                  left: `${leftPosition}%`,
+                  width: `${whiteKeyWidth * 0.6}%` // Black key is 60% width of white key
                 }}
               />
             );
