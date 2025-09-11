@@ -46,6 +46,9 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const [isNarrating, setIsNarrating] = useState(false);
   const [speechError, setSpeechError] = useState(false);
   const [lastNarrationAttempt, setLastNarrationAttempt] = useState(0);
+  const [highlightedKeys, setHighlightedKeys] = useState(new Set<string>());
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [autoPlaySequence, setAutoPlaySequence] = useState<any>(null);
 
   // Initialize Tone.js piano sampler with better sounds
   useEffect(() => {
@@ -340,6 +343,56 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const currentStepData = lessonSteps[currentStep];
   const progress = ((currentStep + 1) / lessonSteps.length) * 100;
 
+  // Auto-play function with key highlighting
+  const startAutoPlay = useCallback(async () => {
+    const notes = [
+      ...(currentStepData.rightHandNotes || []),
+      ...(currentStepData.leftHandNotes || [])
+    ];
+    
+    if (!synth || !audioEnabled || notes.length === 0) return;
+    
+    setIsAutoPlaying(true);
+    await Tone.start();
+    
+    // Create visual sequence for highlighting
+    const sequence = new Tone.Sequence((time, note) => {
+      // Highlight key
+      setHighlightedKeys(new Set([note]));
+      
+      // Play note
+      if (synth.triggerAttackRelease) {
+        synth.triggerAttackRelease(note, "4n", time, 0.7);
+      }
+      
+      // Remove highlight after note duration
+      setTimeout(() => {
+        setHighlightedKeys(new Set());
+      }, 400);
+    }, notes, "4n");
+    
+    // Stop auto-play after sequence completes
+    sequence.stop(Tone.now() + notes.length * 0.6 + 1);
+    setTimeout(() => {
+      setIsAutoPlaying(false);
+      setHighlightedKeys(new Set());
+      sequence.dispose();
+    }, (notes.length * 600) + 1000);
+    
+    sequence.start();
+    setAutoPlaySequence(sequence);
+  }, [synth, audioEnabled, currentStepData]);
+
+  const stopAutoPlay = useCallback(() => {
+    if (autoPlaySequence) {
+      autoPlaySequence.stop();
+      autoPlaySequence.dispose();
+      setAutoPlaySequence(null);
+    }
+    setIsAutoPlaying(false);
+    setHighlightedKeys(new Set());
+  }, [autoPlaySequence]);
+
   const handleNextStep = () => {
     setCompletedSteps(prev => new Set(prev).add(currentStep));
     if (currentStep < lessonSteps.length - 1) {
@@ -487,6 +540,18 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
                     Left Hand Example
                   </Button>
                 )}
+                
+                {(currentStepData.rightHandNotes || currentStepData.leftHandNotes) && (
+                  <Button
+                    onClick={isAutoPlaying ? stopAutoPlay : startAutoPlay}
+                    disabled={isPlaying}
+                    variant={isAutoPlaying ? "destructive" : "default"}
+                    size="sm"
+                  >
+                    <Play size={16} className="mr-2" />
+                    {isAutoPlaying ? 'Stop Auto Play' : 'Watch Demo'}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -495,11 +560,20 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
           {(currentStepData.rightHandNotes || currentStepData.leftHandNotes) && (
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Practice Piano</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  Practice Piano (88 Keys)
+                  {isAutoPlaying && (
+                    <Badge variant="secondary" className="animate-pulse">
+                      Auto Playing
+                    </Badge>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <VirtualPiano 
                   onNotePlay={(note) => console.log('Note played:', note)}
+                  highlightedKeys={highlightedKeys}
+                  autoPlayActive={isAutoPlaying}
                 />
               </CardContent>
             </Card>
