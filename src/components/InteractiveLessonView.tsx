@@ -49,6 +49,7 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const [highlightedKeys, setHighlightedKeys] = useState(new Set<string>());
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [autoPlaySequence, setAutoPlaySequence] = useState<any>(null);
+  const [narrationPlayed, setNarrationPlayed] = useState(new Set<number>());
 
   // Initialize Tone.js piano sampler with better sounds
   useEffect(() => {
@@ -397,6 +398,7 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
     setCompletedSteps(prev => new Set(prev).add(currentStep));
     if (currentStep < lessonSteps.length - 1) {
       setCurrentStep(currentStep + 1);
+      setNarrationPlayed(prev => new Set(prev)); // Clear narration tracking for new step
     } else {
       onComplete();
     }
@@ -405,6 +407,7 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const handlePreviousStep = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      setNarrationPlayed(prev => new Set(prev)); // Clear narration tracking for new step
     }
   };
 
@@ -427,12 +430,22 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
     }
   }, []);
 
-  // Auto-narrate when step changes (only if no speech error)
+  // Auto-narrate when step changes (only once per step)
   useEffect(() => {
-    if (currentStepData?.audioText && audioEnabled && !speechError) {
-      setTimeout(() => speakText(currentStepData.audioText), 500);
+    if (
+      currentStepData?.audioText && 
+      audioEnabled && 
+      !speechError && 
+      !narrationPlayed.has(currentStep)
+    ) {
+      const timer = setTimeout(() => {
+        speakText(currentStepData.audioText);
+        setNarrationPlayed(prev => new Set(prev).add(currentStep));
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
-  }, [currentStep, currentStepData, audioEnabled]); // Removed speakText from deps to prevent loops
+  }, [currentStep, audioEnabled, speechError, currentStepData?.audioText]); // Only depend on currentStep and settings
 
   return (
     <div className="space-y-6">
