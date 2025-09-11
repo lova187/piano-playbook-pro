@@ -88,71 +88,171 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
     };
   }, []);
 
-  // Generate lesson steps based on the lesson content
-  const generateLessonSteps = useCallback((lesson: any): LessonStep[] => {
-    const baseSteps: LessonStep[] = [
+  // Comprehensive lesson content library
+  const getLessonContent = (title: string, category: string): LessonStep[] => {
+    if (title === "Basic Piano Posture") {
+      return [
+        {
+          id: 1,
+          title: "Правильная посадка за пианино",
+          content: "Правильная посадка - это основа успешной игры на пианино. Сядьте на край стула или скамейки, так чтобы ваши ноги твердо стояли на полу или на подставке для ног. Спина должна быть прямой, но расслабленной.",
+          audioText: "Правильная посадка - это основа успешной игры на пианино. Сядьте на край стула, спина прямая, ноги на полу.",
+          tip: "Высота стула должна позволять локтям находиться на уровне клавиш или чуть выше"
+        },
+        {
+          id: 2,
+          title: "Положение рук и запястий",
+          content: "Руки должны висеть свободно по бокам. Поднимите их к клавишам, сохраняя естественное положение. Запястья должны быть на одном уровне с кистями, не опущены и не подняты слишком высоко.",
+          audioText: "Руки висят свободно, запястья на уровне кистей, никакого напряжения в плечах.",
+          rightHandNotes: ['C4'],
+          tip: "Представьте, что держите в руках маленький мячик - такой должна быть форма кисти"
+        },
+        {
+          id: 3,
+          title: "Форма пальцев и касание клавиш",
+          content: "Пальцы должны быть слегка изогнуты, как будто держат маленький мяч. Касайтесь клавиш подушечками пальцев, а не кончиками. Большой палец касается клавиши боковой стороной.",
+          audioText: "Пальцы изогнуты, касаемся клавиш подушечками, большой палец - боковой стороной.",
+          rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4'],
+          tip: "Каждый палец должен нажимать свою клавишу независимо от других"
+        },
+        {
+          id: 4,
+          title: "Упражнение на независимость пальцев",
+          content: "Поставьте все пальцы правой руки на клавиши C-D-E-F-G. Нажимайте каждый палец по очереди, удерживая остальные на клавишах без нажатия. Это развивает независимость пальцев.",
+          audioText: "Ставим пальцы на клавиши до-ре-ми-фа-соль, нажимаем каждый по очереди, остальные просто лежат на клавишах.",
+          rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4'],
+          tip: "Начинайте медленно, следите за тем, чтобы ненужные пальцы не поднимались"
+        },
+        {
+          id: 5,
+          title: "Практическое применение",
+          content: "Теперь применим правильную посадку в простой мелодии. Играем простую гамму До мажор правой рукой, следя за осанкой и положением рук.",
+          audioText: "Применяем все изученное в простой мелодии. Играем гамму до мажор, следим за посадкой.",
+          rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+          tip: "Если устали - остановитесь и проверьте осанку"
+        }
+      ];
+    }
+    
+    if (title === "Major Scales") {
+      return [
+        {
+          id: 1,
+          title: "Что такое мажорная гамма",
+          content: "Мажорная гамма - это последовательность из 8 нот, построенная по формуле: тон-тон-полутон-тон-тон-тон-полутон. Это основа западной музыки. Гамма До мажор состоит только из белых клавиш.",
+          audioText: "Мажорная гамма - последовательность из восьми нот по формуле тон-тон-полутон-тон-тон-тон-полутон.",
+        },
+        {
+          id: 2,
+          title: "Аппликатура правой руки",
+          content: "В гамме До мажор правая рука использует аппликатуру: 1-2-3-1-2-3-4-5 (большой палец-указательный-средний-большой-указательный-средний-безымянный-мизинец). Большой палец подкладывается под 3-й палец на ноте Фа.",
+          audioText: "Аппликатура правой руки: один-два-три-один-два-три-четыре-пять. Большой палец подкладываем на ноте фа.",
+          rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+          tip: "Подкладывание большого пальца должно быть плавным, без рывков"
+        },
+        {
+          id: 3,
+          title: "Аппликатура левой руки",
+          content: "Левая рука играет гамму в нисходящем направлении с аппликатурой: 5-4-3-2-1-3-2-1. Третий палец перекладывается через большой на ноте Соль.",
+          audioText: "Левая рука: пять-четыре-три-два-один-три-два-один. Третий палец перекладываем через большой на ноте соль.",
+          leftHandNotes: ['C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3'],
+          tip: "Перекладывание 3-го пальца должно быть легким и точным"
+        },
+        {
+          id: 4,
+          title: "Координация двух рук",
+          content: "Теперь играем гамму двумя руками в противоположном движении: правая вверх, левая вниз. Начинаем медленно, следим за синхронностью нажатий.",
+          audioText: "Играем двумя руками: правая вверх, левая вниз одновременно. Начинаем медленно.",
+          rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+          leftHandNotes: ['C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3'],
+          tip: "Считайте вслух: 1-2-3-4-5-6-7-8, это поможет синхронизации"
+        },
+        {
+          id: 5,
+          title: "Игра в разных темпах",
+          content: "Практикуем гамму в разных темпах: медленно (60 bpm), умеренно (80 bpm), быстро (100 bpm). Используйте метроном для точности.",
+          audioText: "Практикуем в разных темпах с метрономом: медленно, умеренно, быстро.",
+          rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
+          leftHandNotes: ['C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3'],
+          tip: "Начинайте всегда с медленного темпа, точность важнее скорости"
+        }
+      ];
+    }
+    
+    if (title === "Basic Chords") {
+      return [
+        {
+          id: 1,
+          title: "Что такое аккорд",
+          content: "Аккорд - это одновременное звучание трех или более нот. Трезвучие - самый простой аккорд из трех нот: основной тон (прима), терция и квинта. Мажорные аккорды звучат ярко и радостно.",
+          audioText: "Аккорд - одновременное звучание трех или более нот. Трезвучие состоит из примы, терции и квинты.",
+        },
+        {
+          id: 2,
+          title: "Строение мажорного трезвучия",
+          content: "Мажорное трезвучие До состоит из нот До-Ми-Соль. Между До и Ми - большая терция (4 полутона), между Ми и Соль - малая терция (3 полутона). Эта структура дает характерное мажорное звучание.",
+          audioText: "Мажорное трезвучие до состоит из нот до-ми-соль. Большая терция плюс малая терция.",
+          rightHandNotes: ['C4', 'E4', 'G4'],
+          tip: "Запомните звучание мажорного трезвучия - оно всегда радостное и устойчивое"
+        },
+        {
+          id: 3,
+          title: "Позиция рук для аккордов",
+          content: "Для игры трезвучия используйте пальцы 1-3-5 (большой-средний-мизинец) правой руки. Рука должна быть округлой, запястье на уровне кисти. Нажимайте все ноты одновременно с одинаковой силой.",
+          audioText: "Используем пальцы один-три-пять правой руки. Нажимаем все ноты одновременно с одинаковой силой.",
+          rightHandNotes: ['C4', 'E4', 'G4'],
+          tip: "Представьте, что берете мяч - такая должна быть форма руки при игре аккорда"
+        },
+        {
+          id: 4,
+          title: "Последовательность аккордов",
+          content: "Изучим простую последовательность: C-F-G-C (До мажор - Фа мажор - Соль мажор - До мажор). Это основа многих песен. Переходите от аккорда к аккорду плавно, ищите общие ноты.",
+          audioText: "Играем последовательность до мажор - фа мажор - соль мажор - до мажор. Переходим плавно.",
+          rightHandNotes: ['C4', 'E4', 'G4'],
+          practiceNotes: ['C4', 'E4', 'G4', 'F4', 'A4', 'C5', 'G4', 'B4', 'D5', 'C4', 'E4', 'G4'],
+          tip: "Ищите общие ноты между аккордами - они помогают плавному переходу"
+        },
+        {
+          id: 5,
+          title: "Ритмические паттерны",
+          content: "Практикуем разные ритмы с аккордами: четверти, восьмые, синкопы. Начните с простого: играйте каждый аккорд на каждую долю, затем добавьте ритмические вариации.",
+          audioText: "Практикуем разные ритмы: четверти, восьмые, синкопы. Начинаем с простого ритма.",
+          rightHandNotes: ['C4', 'E4', 'G4'],
+          tip: "Используйте метроном для точности ритма. Сначала медленно, потом быстрее"
+        }
+      ];
+    }
+    
+    // Default generic lesson if specific content not found
+    return [
       {
         id: 1,
-        title: "Introduction",
-        content: `Welcome to ${lesson.title}! In this lesson, you'll learn ${lesson.description.toLowerCase()}. We'll break this down into manageable steps, starting with the fundamentals.`,
-        audioText: `Welcome to ${lesson.title}. In this lesson, you'll learn ${lesson.description}. Let's start with the fundamentals.`,
+        title: "Введение в урок",
+        content: `Добро пожаловать на урок "${title}"! Этот урок поможет вам изучить основы ${category === 'basics' ? 'базовой техники' : category === 'scales' ? 'гамм' : 'гармонии'}.`,
+        audioText: `Добро пожаловать на урок ${title}. Изучаем основы музыкальной теории и практики.`,
       },
       {
         id: 2,
-        title: "Understanding the Concept",
-        content: `Let's begin by understanding what ${lesson.title.toLowerCase()} means in music theory. This concept is fundamental to ${lesson.category} and will help you in your musical journey.`,
-        audioText: `Let's begin by understanding what ${lesson.title} means in music theory. This concept is fundamental to ${lesson.category}.`,
+        title: "Основные понятия",
+        content: "Изучим основные теоретические понятия, которые понадобятся в этом уроке. Понимание теории поможет вам быстрее освоить практическую часть.",
+        audioText: "Изучаем основные теоретические понятия для практического применения.",
       },
+      {
+        id: 3,
+        title: "Практические упражнения",
+        content: "Переходим к практической части. Начнем с простых упражнений и постепенно увеличим сложность.",
+        audioText: "Переходим к практике. Начинаем с простых упражнений.",
+        rightHandNotes: category === 'scales' ? ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'] : ['C4', 'E4', 'G4'],
+        tip: "Начинайте медленно и следите за правильностью исполнения"
+      }
     ];
+  };
 
-    // Add category-specific steps
-    if (lesson.category === 'basics') {
-      baseSteps.push({
-        id: 3,
-        title: "Basic Exercise",
-        content: "Let's practice with a simple exercise. Try playing these notes with your right hand.",
-        audioText: "Now let's practice with a simple exercise. Try playing these notes with your right hand.",
-        rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4'],
-        tip: "Keep your wrist relaxed and fingers curved"
-      });
-    } else if (lesson.category === 'scales') {
-      baseSteps.push({
-        id: 3,
-        title: "Scale Pattern",
-        content: "Let's learn the basic scale pattern. Start with your right hand, then we'll add the left hand.",
-        audioText: "Let's learn the basic scale pattern. Start with your right hand, then we'll add the left hand.",
-        rightHandNotes: ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'],
-        leftHandNotes: ['C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4'],
-      });
-    } else if (lesson.category === 'harmony') {
-      baseSteps.push({
-        id: 3,
-        title: "Chord Structure",
-        content: "Let's build a chord step by step. First the root note, then add the third and fifth.",
-        audioText: "Let's build a chord step by step. First the root note, then add the third and fifth.",
-        rightHandNotes: ['C4', 'E4', 'G4'],
-        tip: "Listen to how each note adds to the harmony"
-      });
-    }
-
-    baseSteps.push({
-      id: 4,
-      title: "Both Hands Practice",
-      content: "Now let's coordinate both hands. Start slowly and gradually increase the tempo.",
-      audioText: "Now let's coordinate both hands. Start slowly and gradually increase the tempo.",
-      leftHandNotes: ['C3', 'G3', 'C3', 'G3'],
-      rightHandNotes: ['E4', 'G4', 'E4', 'G4'],
-      tip: "Focus on timing and coordination between hands"
-    });
-
-    baseSteps.push({
-      id: 5,
-      title: "Completion",
-      content: `Excellent work! You've completed the ${lesson.title} lesson. Practice what you've learned regularly to reinforce these concepts.`,
-      audioText: `Excellent work! You've completed the ${lesson.title} lesson. Keep practicing to reinforce these concepts.`,
-    });
-
-    return baseSteps;
+  // Generate comprehensive lesson content based on lesson type
+  const generateLessonSteps = useCallback((lesson: any): LessonStep[] => {
+    // Create detailed lessons based on lesson title
+    const lessonContent = getLessonContent(lesson.title, lesson.category);
+    return lessonContent;
   }, []);
 
   const lessonSteps = generateLessonSteps(lesson);
