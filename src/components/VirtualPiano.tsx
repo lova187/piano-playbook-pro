@@ -17,41 +17,53 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
   const [activeNotes, setActiveNotes] = useState(new Set<string>());
   const synthRef = useRef<Tone.Sampler | null>(null);
 
-  // Generate all 88 piano keys (A0 to C8)
-  const generatePianoKeys = () => {
-    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const keys = [];
+  // Generate 88-key piano layout starting from A0
+  const generateKeys = () => {
+    const whiteKeys = [];
+    const blackKeys = [];
     
-    // Start from A0, B0
-    keys.push({ note: 'A0', type: 'white', octave: 0 });
-    keys.push({ note: 'A#0', type: 'black', octave: 0 });
-    keys.push({ note: 'B0', type: 'white', octave: 0 });
-    
-    // Generate C1 to C8
+    // Piano starts with A0, A#0, B0
+    whiteKeys.push({ note: 'A0', index: 0 });
+    blackKeys.push({ note: 'A#0', whiteIndex: 0 });
+    whiteKeys.push({ note: 'B0', index: 1 });
+
+    // Generate octaves 1-7 complete, octave 8 only C
     for (let octave = 1; octave <= 8; octave++) {
-      for (let i = 0; i < notes.length; i++) {
-        const note = notes[i];
-        const fullNote = `${note}${octave}`;
+      const octavePattern = [
+        { note: `C${octave}`, type: 'white' },
+        { note: `C#${octave}`, type: 'black', after: `C${octave}` },
+        { note: `D${octave}`, type: 'white' },
+        { note: `D#${octave}`, type: 'black', after: `D${octave}` },
+        { note: `E${octave}`, type: 'white' },
+        { note: `F${octave}`, type: 'white' },
+        { note: `F#${octave}`, type: 'black', after: `F${octave}` },
+        { note: `G${octave}`, type: 'white' },
+        { note: `G#${octave}`, type: 'black', after: `G${octave}` },
+        { note: `A${octave}`, type: 'white' },
+        { note: `A#${octave}`, type: 'black', after: `A${octave}` },
+        { note: `B${octave}`, type: 'white' }
+      ];
+
+      for (const key of octavePattern) {
+        if (octave === 8 && key.note !== 'C8') break; // Only C8 for octave 8
         
-        if (octave === 8 && i > 0) break; // Stop after C8
-        
-        keys.push({
-          note: fullNote,
-          type: note.includes('#') ? 'black' : 'white',
-          octave: octave
-        });
+        if (key.type === 'white') {
+          whiteKeys.push({ note: key.note, index: whiteKeys.length });
+        } else {
+          const afterWhiteIndex = whiteKeys.findIndex(wk => wk.note === key.after);
+          if (afterWhiteIndex !== -1) {
+            blackKeys.push({ note: key.note, whiteIndex: afterWhiteIndex });
+          }
+        }
       }
     }
-    
-    return keys;
+
+    return { whiteKeys, blackKeys };
   };
 
-  const allKeys = generatePianoKeys();
-  const whiteKeys = allKeys.filter(key => key.type === 'white');
-  const blackKeys = allKeys.filter(key => key.type === 'black');
+  const { whiteKeys, blackKeys } = generateKeys();
 
   useEffect(() => {
-    // Create a piano sampler with better sounds
     const pianoSampler = new Tone.Sampler({
       urls: {
         C4: "https://tonejs.github.io/audio/salamander/C4.mp3",
@@ -67,7 +79,6 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
       baseUrl: "",
     });
 
-    // Add effects for more realistic piano sound
     const reverb = new Tone.Reverb({
       decay: 2.5,
       wet: 0.25,
@@ -80,9 +91,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
       release: 0.1,
     });
 
-    // Chain: Piano -> Compressor -> Reverb -> Output
     pianoSampler.chain(compressor, reverb, Tone.Destination);
-    
     synthRef.current = pianoSampler;
     
     return () => {
@@ -94,7 +103,6 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
 
   const playNote = useCallback((note: string) => {
     if (synthRef.current) {
-      // Add slight velocity variation for more natural sound
       const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
       synthRef.current.triggerAttackRelease(note, "2n", undefined, velocity);
       
@@ -110,28 +118,6 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
     }
   }, [onNotePlay]);
 
-  // Calculate black key positions relative to white keys
-  const getBlackKeyPosition = (blackKey: any, index: number) => {
-    const whiteKeyWidth = 100 / whiteKeys.length; // Percentage width of each white key
-    const whiteKeyIndex = whiteKeys.findIndex(wk => {
-      const blackNote = blackKey.note.replace('#', '');
-      const whiteNote = wk.note.replace(/\d+/, '');
-      const blackOctave = parseInt(blackKey.note.match(/\d+/)?.[0] || '0');
-      const whiteOctave = parseInt(wk.note.match(/\d+/)?.[0] || '0');
-      
-      // Position black keys between appropriate white keys
-      if (blackNote === 'C' && whiteNote === 'C' && blackOctave === whiteOctave) return true;
-      if (blackNote === 'D' && whiteNote === 'D' && blackOctave === whiteOctave) return true;
-      if (blackNote === 'F' && whiteNote === 'F' && blackOctave === whiteOctave) return true;
-      if (blackNote === 'G' && whiteNote === 'G' && blackOctave === whiteOctave) return true;
-      if (blackNote === 'A' && whiteNote === 'A' && blackOctave === whiteOctave) return true;
-      return false;
-    });
-    
-    if (whiteKeyIndex === -1) return 0;
-    return (whiteKeyIndex * whiteKeyWidth) + (whiteKeyWidth * 0.7); // Position at 70% of white key
-  };
-
   return (
     <div className="relative bg-card rounded-xl p-4 shadow-elegant border border-border overflow-x-auto">
       {isRecording && (
@@ -146,9 +132,10 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
           <span className="text-sm font-medium">Auto Playing</span>
         </div>
       )}
-      <div className="relative h-32 min-w-[1200px]">
+      
+      <div className="relative h-32 min-w-[1800px]">
         {/* White Keys */}
-        <div className="flex h-full">
+        <div className="flex h-full gap-0">
           {whiteKeys.map((key, index) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
@@ -159,16 +146,17 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
                 key={key.note}
                 onMouseDown={() => playNote(key.note)}
                 onTouchStart={() => playNote(key.note)}
-                className={`flex-1 border border-border rounded-b-lg transition-all duration-150 shadow-sm flex items-end justify-center pb-2 min-w-[13px] ${
+                className={`h-full border border-gray-300 rounded-b-lg transition-all duration-150 shadow-sm flex items-end justify-center pb-2 ${
                   isActive 
-                    ? 'bg-accent transform scale-95 shadow-glow' 
+                    ? 'bg-accent transform scale-95 shadow-lg' 
                     : isHighlighted
-                    ? 'bg-primary text-primary-foreground shadow-primary'
-                    : 'bg-white hover:bg-muted'
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'bg-white hover:bg-gray-50'
                 }`}
+                style={{ width: '20px', minWidth: '20px' }}
               >
-                <span className="text-xs font-medium text-muted-foreground pointer-events-none">
-                  {key.octave <= 2 || index % 12 === 0 ? noteLabel : ''}
+                <span className="text-[10px] font-medium text-gray-500 pointer-events-none">
+                  {index % 7 === 0 || key.note.includes('C') ? noteLabel : ''}
                 </span>
               </button>
             );
@@ -177,24 +165,27 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         
         {/* Black Keys */}
         <div className="absolute top-0 left-0 w-full h-20">
-          {blackKeys.map((key, index) => {
+          {blackKeys.map((key) => {
             const isActive = activeNotes.has(key.note);
             const isHighlighted = highlightedKeys.has(key.note);
-            const position = getBlackKeyPosition(key, index);
+            const leftPosition = (key.whiteIndex * 20) + 14; // 20px per white key, offset by 14px
             
             return (
               <button
                 key={key.note}
                 onMouseDown={() => playNote(key.note)}
                 onTouchStart={() => playNote(key.note)}
-                style={{ left: `${position}%` }}
-                className={`absolute w-3 h-full transition-all duration-150 rounded-b-lg shadow-md ${
+                className={`absolute h-full transition-all duration-150 rounded-b-lg shadow-md z-10 ${
                   isActive 
-                    ? 'bg-primary transform scale-95 shadow-purple' 
+                    ? 'bg-purple-600 transform scale-95 shadow-lg' 
                     : isHighlighted
-                    ? 'bg-accent shadow-accent'
-                    : 'bg-foreground hover:bg-muted-foreground'
+                    ? 'bg-yellow-500 shadow-lg'
+                    : 'bg-gray-800 hover:bg-gray-700'
                 }`}
+                style={{ 
+                  left: `${leftPosition}px`,
+                  width: '12px'
+                }}
               />
             );
           })}
@@ -207,7 +198,7 @@ const VirtualPiano: React.FC<VirtualPianoProps> = ({
         <span>C1</span>
         <span>C2</span>
         <span>C3</span>
-        <span>C4 (Middle C)</span>
+        <span>C4</span>
         <span>C5</span>
         <span>C6</span>
         <span>C7</span>
