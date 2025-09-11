@@ -44,6 +44,8 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [synth, setSynth] = useState<Tone.Sampler | null>(null);
   const [isNarrating, setIsNarrating] = useState(false);
+  const [speechError, setSpeechError] = useState(false);
+  const [lastNarrationAttempt, setLastNarrationAttempt] = useState(0);
 
   // Initialize Tone.js piano sampler with better sounds
   useEffect(() => {
@@ -157,8 +159,13 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
 
   // Text-to-Speech function using Web Speech API
   const speakText = useCallback(async (text: string) => {
-    if (!audioEnabled) return;
+    if (!audioEnabled || speechError) return;
     
+    // Prevent rapid-fire attempts
+    const now = Date.now();
+    if (now - lastNarrationAttempt < 2000) return; // 2 second cooldown
+    
+    setLastNarrationAttempt(now);
     setIsNarrating(true);
     
     try {
@@ -170,11 +177,11 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
         const utterance = new SpeechSynthesisUtterance(text);
         
         // Configure voice settings
-        utterance.rate = 0.9; // Slightly slower for better comprehension
+        utterance.rate = 0.9;
         utterance.pitch = 1.0;
         utterance.volume = 0.8;
         
-        // Try to find a better voice (prefer female voices for teaching)
+        // Try to find a better voice
         const voices = window.speechSynthesis.getVoices();
         const preferredVoice = voices.find(voice => 
           voice.lang.startsWith('en') && 
@@ -187,24 +194,25 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
         
         utterance.onend = () => {
           setIsNarrating(false);
+          setSpeechError(false);
         };
         
         utterance.onerror = () => {
           setIsNarrating(false);
-          console.error('Speech synthesis error');
+          setSpeechError(true);
+          console.log('Speech synthesis not available');
         };
         
         window.speechSynthesis.speak(utterance);
       } else {
-        // Fallback: show text in console and stop narrating state
-        console.log('Narration:', text);
         setIsNarrating(false);
+        setSpeechError(true);
       }
     } catch (error) {
-      console.error('Text-to-speech error:', error);
       setIsNarrating(false);
+      setSpeechError(true);
     }
-  }, [audioEnabled]);
+  }, [audioEnabled, speechError, lastNarrationAttempt]);
 
   // Play piano notes with more realistic timing and dynamics
   const playNotes = useCallback(async (notes: string[], hand: 'left' | 'right' = 'right') => {
@@ -266,12 +274,12 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
     }
   }, []);
 
-  // Auto-narrate when step changes
+  // Auto-narrate when step changes (only if no speech error)
   useEffect(() => {
-    if (currentStepData?.audioText && audioEnabled) {
+    if (currentStepData?.audioText && audioEnabled && !speechError) {
       setTimeout(() => speakText(currentStepData.audioText), 500);
     }
-  }, [currentStep, currentStepData, speakText, audioEnabled]);
+  }, [currentStep, currentStepData, audioEnabled]); // Removed speakText from deps to prevent loops
 
   return (
     <div className="space-y-6">
@@ -344,13 +352,16 @@ const InteractiveLessonView: React.FC<InteractiveLessonViewProps> = ({
               {/* Audio Controls */}
               <div className="flex gap-2 flex-wrap">
                 <Button
-                  onClick={() => speakText(currentStepData.audioText)}
+                  onClick={() => {
+                    setSpeechError(false); // Reset error when manually clicking
+                    speakText(currentStepData.audioText);
+                  }}
                   disabled={isNarrating}
                   variant="secondary"
                   size="sm"
                 >
                   <Headphones size={16} className="mr-2" />
-                  {isNarrating ? 'Speaking...' : 'Play Narration'}
+                  {isNarrating ? 'Speaking...' : speechError ? 'Try Narration' : 'Play Narration'}
                 </Button>
                 
                 {currentStepData.rightHandNotes && (
