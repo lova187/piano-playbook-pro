@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, Clock, Target, Piano
 } from 'lucide-react';
 import * as Tone from 'tone';
+import VirtualPiano from '@/components/VirtualPiano';
 
 interface SongPart {
   id: number;
@@ -31,7 +32,7 @@ interface SongAnalysisViewProps {
 }
 
 export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack }) => {
-  const [selectedHand, setSelectedHand] = useState<'left' | 'right'>('right');
+  const [selectedHand, setSelectedHand] = useState<'left' | 'right' | 'combined'>('right');
   const [selectedPart, setSelectedPart] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState(0);
@@ -86,8 +87,56 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
     };
   }, []);
 
-  const currentParts = song.parts[selectedHand === 'left' ? 'leftHand' : 'rightHand'];
+  const currentParts = selectedHand === 'combined' 
+    ? [...song.parts.leftHand, ...song.parts.rightHand].sort((a, b) => a.id - b.id)
+    : song.parts[selectedHand === 'left' ? 'leftHand' : 'rightHand'];
   const currentPart = currentParts[selectedPart];
+
+  // For combined mode, create merged parts with hand indicators
+  const getCombinedPart = (leftPart: SongPart, rightPart: SongPart) => {
+    const maxLength = Math.max(leftPart.notes.length, rightPart.notes.length);
+    const mergedNotes = [];
+    const mergedTiming = [];
+    const handIndicators = [];
+
+    for (let i = 0; i < maxLength; i++) {
+      const leftNote = leftPart.notes[i];
+      const rightNote = rightPart.notes[i];
+      const leftTime = leftPart.timing[i] || 0;
+      const rightTime = rightPart.timing[i] || 0;
+
+      if (leftNote && rightNote) {
+        // Both hands play at the same time
+        const combinedNote = Array.isArray(leftNote) && Array.isArray(rightNote)
+          ? [...leftNote, ...rightNote]
+          : Array.isArray(leftNote) 
+            ? [...leftNote, rightNote as string]
+            : Array.isArray(rightNote)
+              ? [leftNote as string, ...rightNote]
+              : [leftNote as string, rightNote as string];
+        mergedNotes.push(combinedNote);
+        mergedTiming.push(Math.min(leftTime, rightTime));
+        handIndicators.push('both');
+      } else if (leftNote) {
+        mergedNotes.push(leftNote);
+        mergedTiming.push(leftTime);
+        handIndicators.push('left');
+      } else if (rightNote) {
+        mergedNotes.push(rightNote);
+        mergedTiming.push(rightTime);
+        handIndicators.push('right');
+      }
+    }
+
+    return {
+      ...leftPart,
+      name: `${leftPart.name} + ${rightPart.name}`,
+      description: 'Combined left and right hand practice',
+      notes: mergedNotes,
+      timing: mergedTiming,
+      handIndicators
+    };
+  };
 
   const difficultyColors = {
     beginner: 'bg-success/20 text-success border-success/30',
@@ -109,6 +158,8 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
       
       if (isPlaying) {
         console.log('Stopping playback...');
+        Tone.Transport.stop();
+        sequenceRef.current?.dispose();
         setIsPlaying(false);
         setPlaybackPosition(0);
         setActiveKeys(new Set());
@@ -117,47 +168,63 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
 
       const { notes, timing } = currentPart;
       setIsPlaying(true);
+      setPlaybackPosition(0);
       console.log('Playing part:', currentPart.name, 'Notes:', notes, 'Timing:', timing);
 
-      // Simple immediate playback to test
-      notes.forEach((note, index) => {
-        setTimeout(() => {
-          if (!isPlaying) return;
-          
-          console.log(`Playing note ${index}:`, note);
-          
+      // Use Tone.js Transport for precise timing
+      Tone.Transport.bpm.value = 120; // 120 BPM default
+      
+      // Create a sequence with proper timing
+      const sequence = new Tone.Sequence((time, index) => {
+        if (index >= notes.length) {
+          // End of sequence
+          Tone.Transport.stop();
+          setIsPlaying(false);
+          setPlaybackPosition(0);
+          setActiveKeys(new Set());
+          return;
+        }
+
+        const note = notes[index];
+        const duration = timing[index] || 0.5; // Default duration
+        
+        console.log(`Playing note ${index}:`, note, 'at time:', time);
+        
+        // Highlight keys immediately
+        Tone.Draw.schedule(() => {
+          setPlaybackPosition(index);
           if (Array.isArray(note)) {
-            // Play chord
-            note.forEach(n => {
-              if (synthRef.current) {
-                synthRef.current.triggerAttackRelease(n, "1n");
-                console.log('Triggered chord note:', n);
-              }
-            });
             setActiveKeys(new Set(note));
           } else {
-            // Play single note
-            if (synthRef.current) {
-              synthRef.current.triggerAttackRelease(note, "1n");
-              console.log('Triggered single note:', note);
-            }
             setActiveKeys(new Set([note]));
           }
+        }, time);
 
-          setPlaybackPosition(index);
-          
-          // Clear highlight after note
-          setTimeout(() => setActiveKeys(new Set()), 600);
-        }, index * 1000); // 1 second between notes for testing
-      });
+        // Play the note(s)
+        if (Array.isArray(note)) {
+          // Play chord
+          note.forEach(n => {
+            if (synthRef.current) {
+              synthRef.current.triggerAttackRelease(n, duration, time);
+            }
+          });
+        } else {
+          // Play single note
+          if (synthRef.current) {
+            synthRef.current.triggerAttackRelease(note, duration, time);
+          }
+        }
 
-      // Stop after all notes
-      setTimeout(() => {
-        console.log('Auto-stopping playback');
-        setIsPlaying(false);
-        setPlaybackPosition(0);
-        setActiveKeys(new Set());
-      }, notes.length * 1000 + 1000);
+        // Clear highlight after note duration
+        Tone.Draw.schedule(() => {
+          setActiveKeys(new Set());
+        }, time + duration);
+        
+      }, timing.map((t, i) => i * 0.5), 0); // Schedule every 0.5 seconds with timing offsets
+
+      sequenceRef.current = sequence;
+      sequence.start(0);
+      Tone.Transport.start();
 
     } catch (error) {
       console.error('Playback error:', error);
@@ -175,81 +242,6 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
     setActiveKeys(new Set());
   };
 
-  // Virtual Piano Component
-  const VirtualPianoDisplay = () => {
-    const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-    const blackKeys = [
-      { note: 'C#', position: 8.5 },
-      { note: 'D#', position: 20.5 },
-      { note: 'F#', position: 44.5 },
-      { note: 'G#', position: 56.5 },
-      { note: 'A#', position: 68.5 }
-    ];
-
-    const playNote = useCallback((note: string) => {
-      if (synthRef.current) {
-        const velocity = 0.8 + (Math.random() * 0.2 - 0.1);
-        synthRef.current.triggerAttackRelease(`${note}4`, "8n", undefined, velocity);
-        
-        setActiveKeys(prev => new Set(prev).add(`${note}4`));
-        setTimeout(() => {
-          setActiveKeys(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(`${note}4`);
-            return newSet;
-          });
-        }, 300);
-      }
-    }, []);
-
-    return (
-      <div className="relative bg-card rounded-lg p-4 border border-border">
-        <div className="flex items-center gap-2 mb-4">
-          <Piano size={16} />
-          <span className="text-sm font-medium">Interactive Piano</span>
-        </div>
-        <div className="relative h-24">
-          {/* White Keys */}
-          <div className="flex gap-0.5 h-full">
-            {whiteKeys.map((key) => {
-              const noteKey = `${key}4`;
-              return (
-                <button
-                  key={key}
-                  onMouseDown={() => playNote(key)}
-                  onTouchStart={() => playNote(key)}
-                  className={`flex-1 bg-white border border-border rounded-b-lg hover:bg-muted transition-all duration-150 shadow-sm ${
-                    activeKeys.has(noteKey) ? 'bg-primary/20 transform scale-95 shadow-glow' : ''
-                  }`}
-                >
-                  <span className="text-xs font-medium text-muted-foreground mt-auto mb-2 block">
-                    {key}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {/* Black Keys */}
-          <div className="absolute top-0 left-0 w-full h-16">
-            {blackKeys.map((key) => {
-              const noteKey = `${key.note}4`;
-              return (
-                <button
-                  key={key.note}
-                  onMouseDown={() => playNote(key.note.replace('#', '#'))}
-                  onTouchStart={() => playNote(key.note.replace('#', '#'))}
-                  style={{ left: `${key.position}%` }}
-                  className={`absolute w-6 h-full bg-foreground hover:bg-muted-foreground transition-all duration-150 rounded-b-lg shadow-md ${
-                    activeKeys.has(noteKey) ? 'bg-primary transform scale-95' : ''
-                  }`}
-                />
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -280,7 +272,7 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Hand Selection */}
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant={selectedHand === 'left' ? 'default' : 'outline'}
                 onClick={() => {
@@ -288,7 +280,7 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
                   setSelectedPart(0);
                   resetPlayback();
                 }}
-                className="flex-1"
+                className="text-xs"
               >
                 Left Hand
               </Button>
@@ -299,9 +291,20 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
                   setSelectedPart(0);
                   resetPlayback();
                 }}
-                className="flex-1"
+                className="text-xs"
               >
                 Right Hand
+              </Button>
+              <Button
+                variant={selectedHand === 'combined' ? 'default' : 'outline'}
+                onClick={() => {
+                  setSelectedHand('combined');
+                  setSelectedPart(0);
+                  resetPlayback();
+                }}
+                className="text-xs"
+              >
+                Combined
               </Button>
             </div>
 
@@ -382,33 +385,71 @@ export const SongAnalysisView: React.FC<SongAnalysisViewProps> = ({ song, onBack
                   Notes to Practice
                 </h4>
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                  {currentPart.notes.map((note, index) => (
-                    <div
-                      key={index}
-                      className={`p-2 text-center text-sm rounded border transition-all ${
-                        playbackPosition > index && isPlaying
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-border'
-                      }`}
-                    >
-                      {Array.isArray(note) ? note.join(' + ') : note}
-                    </div>
-                  ))}
+                  {currentPart.notes.map((note, index) => {
+                    const handIndicator = (currentPart as any).handIndicators?.[index];
+                    const isActive = playbackPosition === index && isPlaying;
+                    const isPlayed = playbackPosition > index && isPlaying;
+                    
+                    return (
+                      <div
+                        key={index}
+                        className={`p-2 text-center text-sm rounded border transition-all ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-primary shadow-lg'
+                            : isPlayed
+                            ? 'bg-success/20 text-success border-success/30'
+                            : handIndicator === 'left'
+                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                            : handIndicator === 'right'
+                            ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                            : handIndicator === 'both'
+                            ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                            : 'bg-background border-border'
+                        }`}
+                      >
+                        <div className="text-xs">
+                          {Array.isArray(note) ? note.join(' + ') : note}
+                        </div>
+                        {handIndicator && (
+                          <div className="text-[10px] opacity-70 mt-1">
+                            {handIndicator === 'both' ? 'L+R' : handIndicator === 'left' ? 'L' : 'R'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Virtual Piano */}
-            <VirtualPianoDisplay />
+            {/* Full 88-Key Virtual Piano */}
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <Piano size={16} />
+                Full Piano ({selectedHand === 'combined' ? 'Both Hands' : selectedHand === 'left' ? 'Left Hand' : 'Right Hand'})
+              </h4>
+              <VirtualPiano 
+                highlightedKeys={activeKeys}
+                autoPlayActive={isPlaying}
+                onNotePlay={(note) => console.log('Manual note played:', note)}
+              />
+            </div>
 
             {/* Practice Tips */}
             <div className="bg-accent/20 p-4 rounded-lg">
               <h4 className="font-medium mb-2">💡 Practice Tips</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Start slowly and focus on accuracy over speed</li>
-                <li>• Practice each hand separately before combining</li>
+                {selectedHand === 'combined' ? (
+                  <>
+                    <li>• <span className="text-blue-400">Blue notes</span> = Left hand, <span className="text-red-400">Red notes</span> = Right hand, <span className="text-purple-400">Purple notes</span> = Both hands</li>
+                    <li>• Practice each hand separately first, then combine</li>
+                  </>
+                ) : (
+                  <li>• Practice each hand separately before combining</li>
+                )}
                 <li>• Use the audio preview to learn the rhythm</li>
-                <li>• Watch the highlighted keys to learn finger positioning</li>
+                <li>• Watch the highlighted keys on the full 88-key piano</li>
                 <li>• Repeat difficult sections multiple times</li>
               </ul>
             </div>
