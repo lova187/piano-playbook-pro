@@ -12,6 +12,8 @@ import { AddSongDialog } from './AddSongDialog';
 import { SongAnalysisView } from './SongAnalysisView';
 import { MidiController } from './MidiController';
 import InteractiveLessonView from './InteractiveLessonView';
+import { PracticeAnalyzer } from './PracticeAnalyzer';
+import { SmartPracticeMode } from './SmartPracticeMode';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -211,7 +213,17 @@ const PianoMentor: React.FC = () => {
     }));
   };
 
-  const handleSongAdded = (song: any) => {
+  const handlePracticeSessionComplete = (sessionData: any) => {
+    const minutes = Math.floor(sessionData.duration / (1000 * 60));
+    setDailyProgress(prev => Math.min(prev + minutes, dailyGoal));
+    addXP(minutes * 10, 'Practice session completed');
+    
+    showAchievementNotification(
+      "Practice Complete!", 
+      `Great session! You practiced for ${minutes} minutes.`, 
+      "🎹"
+    );
+  };
     console.log('Adding song:', song);
     setCustomSongs(prev => {
       const updated = [...prev, song];
@@ -622,6 +634,7 @@ const PianoMentor: React.FC = () => {
                         >
                           <option value="free">Free Play</option>
                           <option value="guided">Guided Practice</option>
+                          <option value="smart">AI Smart Practice</option>
                           <option value="challenge">Challenge Mode</option>
                         </select>
                       </div>
